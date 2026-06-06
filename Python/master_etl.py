@@ -4,7 +4,7 @@ import logging
 import psycopg2
 from dotenv import load_dotenv
 
-os.chdir(r"C:\IDR\Python")
+os.chdir(r"C:\IDR\MSc-Artefact\Python")
 
 load_dotenv()
 DB_CONFIG = {
@@ -25,7 +25,7 @@ def build_fact_table():
     logging.info("Starting fact table build process.")
     try:
         # load SQL file
-        with open(r"C:\IDR\SQL\build_fact_table.sql", "r") as f:
+        with open(r"C:\IDR\MSc-Artefact\SQL\build_fact_table.sql", "r") as f:
             sql = f.read()
 
         # Connect to DB
@@ -75,7 +75,10 @@ try:
 except subprocess.CalledProcessError as e:
     logging.error(f"Intake ETL failed: {e}")
 
+logging.info("Building Fact Table...")
+
 build_fact_table()
 
+    
 logging.info("Master ETL process completed successfully.")
 

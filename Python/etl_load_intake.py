@@ -99,7 +99,7 @@ def convert_dates(df):
 
     for col in date_cols:
         if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors="coerce", dayfirst=True)
+            df[col] = pd.to_datetime(df[col], format="%Y-%m-%d", errors="coerce")
 
     return df
 
