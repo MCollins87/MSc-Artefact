@@ -16,6 +16,7 @@ SELECT
     s.clinic_date,
     ct.ct_date,
     t.first_treat_date,
+    r.rt_referral_date,
 
 
     -- ========================
@@ -56,6 +57,29 @@ SELECT
     CASE 
         WHEN (t.first_treat_date::DATE - s.date_referred::DATE) > 62 THEN 1 ELSE 0
     END AS breach_62,
+
+    -- ========================
+    -- Breach Risks (Open pathways)
+    -- ========================
+
+    CASE
+        WHEN s.no_opa IS NOT NULL THEN
+            (s.date_triaged::DATE - s.date_referred::DATE)
+        
+        WHEN s.clinic_date IS NULL OR s.no_opa IS NULL THEN
+            (CURRENT_DATE - s.date_referred::DATE)
+        
+        ELSE
+            (s.clinic_date::DATE - s.date_referred::DATE)
+    END AS pathway_days
+
+    CASE
+        WHEN s.no_opa IS NOT NULL THEN 'Closed'
+
+        WHEN s.clinic_date IS NULL AND s.no_opa IS NULL THEN 'Active'
+
+        ELSE 'Progressed'
+    END AS pathway_status
 
     CURRENT_TIMESTAMP AS load_timestamp
 
