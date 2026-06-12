@@ -18,6 +18,15 @@ SELECT
     t.first_treat_date,
     r.rt_referral_date,
 
+    -- Wek start dates
+
+    DATE_TRUNC('week', s.date_referred)::DATE AS referral_week_start,
+    
+    CASE
+        WHEN r.rt_referral_date IS NOT NULL
+        THEN DATE_TRUNC('week', r.rt_referral_date)::DATE 
+    END AS rt_referral_week_start,
+
 
     -- ========================
     -- Referral-based intervals
@@ -71,7 +80,7 @@ SELECT
         
         ELSE
             (s.clinic_date::DATE - s.date_referred::DATE)
-    END AS pathway_days
+    END AS pathway_days,
 
     CASE
         WHEN s.no_opa IS NOT NULL THEN 'Closed'
@@ -79,7 +88,23 @@ SELECT
         WHEN s.clinic_date IS NULL AND s.no_opa IS NULL THEN 'Active'
 
         ELSE 'Progressed'
-    END AS pathway_status
+    END AS pathway_status,
+
+    -- ======================
+    -- Pathway Flags
+    -- ======================
+    CASE WHEN s.date_referred IS NOT NULL THEN 1 ELSE 0 END AS has_referral,
+
+    CASE WHEN s.clinic_date IS NOT NULL THEN 1 ELSE 0 END AS has_clinic,
+
+    CASE WHEN r.rt_referral_date IS NOT NULL THEN 1 ELSE 0 END AS has_rt_referral,
+
+    CASE WHEN t.first_treat_date IS NOT NULL THEN 1 ELSE 0 END AS has_treatment,
+
+    CASE
+        WHEN s.clinic_date IS NOT NULL AND r.rt_referral_date IS NOT NULL
+        THEN 1 ELSE 0
+    END AS clinic_to_rt_conversion,
 
     CURRENT_TIMESTAMP AS load_timestamp
 
