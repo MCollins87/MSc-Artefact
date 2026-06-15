@@ -5,7 +5,7 @@ CREATE TABLE warehouse.fact_rt_referral AS
 SELECT
     r.nhs_number,
     r.rt_referral_date,
-    r.oncologist.
+    r.oncologist,
     r.activity_name,
     r.diagnosis_icd10,
 
@@ -14,7 +14,7 @@ SELECT
     DATE_TRUNC('week', r.rt_referral_date)::DATE AS rt_referral_week,
 
     -- Flags
-    1 AS is_rt_referral
+    1 AS is_rt_referral,
 
     -- Metadata
     CURRENT_TIMESTAMP AS load_timestamp

@@ -3,8 +3,8 @@ DROP TABLE IF EXISTS warehouse.fact_oncology_pathway;
 CREATE TABLE warehouse.fact_oncology_pathway AS
 SELECT
     s.nhs_number,
-    s.pas_number,
-    s.oncologist
+    s.r_number,
+    s.oncologist,
     s.tumour_site,
 
     -- Core Dates
@@ -20,7 +20,7 @@ SELECT
     DATE_TRUNC('week', s.date_referred)::DATE AS referral_week,
 
     -- Flags
-    CASE WHEN s.date_referred IS NOT NULL THN 1 ELSE 0 END AS is_referral,
+    CASE WHEN s.date_referred IS NOT NULL THEN 1 ELSE 0 END AS is_referral,
     CASE WHEN s.clinic_date IS NOT NULL THEN 1 ELSE 0 END AS has_clinic,
     CASE WHEN MIN(r.rt_referral_date) IS NOT NULL THEN 1 ELSE 0 END AS has_rt_referral,
 
@@ -28,7 +28,7 @@ SELECT
     CASE
         WHEN s.clinic_date IS NOT NULL THEN
             (s.clinic_date::DATE - s.date_referred::DATE)
-    END AS days to clinic,
+    END AS days_to_clinic,
 
     
 CASE
@@ -49,7 +49,7 @@ LEFT JOIN staging.stg_aria_rt_referral r
 
 GROUP BY
     s.nhs_number,
-    s.pas_number,
+    s.r_number,
     s.oncologist,
     s.tumour_site,
     s.date_referred,
