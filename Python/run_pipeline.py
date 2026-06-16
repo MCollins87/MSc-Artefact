@@ -77,4 +77,4 @@ run_sql("../SQL/dimensions/dim_rcr_category.sql")
 
 run_sql("../SQL/facts/fact_rt_pathway.sql")
 
-print("Pipeline complete ✅")
+logging.info("Pipeline complete")
