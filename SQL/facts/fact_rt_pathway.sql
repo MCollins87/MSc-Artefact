@@ -26,12 +26,13 @@ SELECT
     -- =====================
     b_first.booking_due_date     AS first_booking_date,
     b_latest.booking_status      AS latest_booking_status,
+    b_first.rcr_category
 
     -- =====================
     -- ECAD (before + after)
     -- =====================
     ecad_pre.ecad_date  AS ecad_pre_referral,
-    ecad_post.ecad_date AS ecad_post_referral,
+    ecad_post.ecad_date AS ecad_post_referral, -- clock start
 
     -- =====================
     -- CT + TREATMENT
@@ -57,9 +58,39 @@ SELECT
     DATE_PART('day', ecad_post.ecad_date - r.rt_referral_date) AS days_rt_to_ecad,
     DATE_PART('day', ct.ct_date - r.rt_referral_date) AS days_rt_to_ct,
     DATE_PART('day', t.first_treat_date - r.rt_referral_date) AS days_rt_to_treat,
+    DATE_PART('day', t.first_treat_date - ecad_post.ecad_date) AS days_ecad_to_treat,
 
     -- CT → Treat
     DATE_PART('day', t.first_treat_date - ct.ct_date) AS days_ct_to_treat,
+
+    -- ====================
+    -- RCR Performance
+    -- ====================
+
+    t_dim.target_days AS RCR_target_days,
+
+    CASE
+        WHEN t.first_treat_date IS NULL THEN NULL
+        WHEN ecad_post.ecad_date IS NULL THEN NULL
+        WHEN DATE_PART('day', t.first_treat_date - ecad_post.ecas_date) <= t_dim.target_days
+        THEN 1 ELSE 0
+    END AS rcr_within_target_flag,
+
+    CASE
+        WHEN t.first_treat_date IS NULL OR ecad_post.ecad_date IS NULL THEN NULL
+        ELSE DATE_PART('day', t.first_treat_date - ecad_post.ecad_date) - t_dim.target_days
+    END AS rcr_breach_days,
+
+    CASE
+        WHEN t.first_treat_date IS NULL THEN 'Active'
+        WHEN ecad_post.ecad_date IS NULL THEN 'No ECAD'
+        WHEN DATE_PART('day', t.first_treat_date - ecad_post.ecad_date)
+             - t_dim.target_days <= 0 THEN 'Within Target'
+        WHEN DATE_PART('day', t.first_treat_date - ecad_post.ecad_date)
+             - t_dim.target_days <= 7 THEN 'Minor Breach'
+        ELSE 'Major Breach'
+    END AS rcr_performance_band,
+
 
     -- =====================
     -- OPERATIONAL FLAGS
@@ -90,7 +121,10 @@ FROM warehouse.int_rt_referral r
 -- BOOKING (first after)
 -- =====================
 LEFT JOIN LATERAL (
-    SELECT b.booking_due_date
+    SELECT 
+        b.booking_due_date,
+        b.booking_status,
+        b.rcr_category
     FROM warehouse.int_rt_booking_events b
     WHERE b.r_number = r.r_number
       AND b.booking_due_date >= r.rt_referral_date
@@ -106,6 +140,9 @@ LEFT JOIN LATERAL (
     ORDER BY b.booking_due_date DESC
     LIMIT 1
 ) b_latest ON TRUE
+
+LEFT JOIN warehouse.dim_rcr_targets t_dim
+    ON b_first.rcr_category = t_dim.rcr_category
 
 -- =====================
 -- ECAD

@@ -29,7 +29,11 @@ SELECT
     booking_due_date,
     booking_status,
     activity_name,
-    booked_by
+    booked_by,
+    d.rcr_category
 
 FROM booking_clean
+LEFT JOIN warehouse.dim_rcr_category d
+    ON bc.activity_name = d.raw_activity_name
+    
 WHERE rn = 1;
