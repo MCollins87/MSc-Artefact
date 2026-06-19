@@ -26,7 +26,7 @@ SELECT
     -- =====================
     b_first.booking_due_date     AS first_booking_date,
     b_latest.booking_status      AS latest_booking_status,
-    b_first.rcr_category
+    b_first.rcr_category,
 
     -- =====================
     -- ECAD (before + after)
@@ -72,7 +72,7 @@ SELECT
     CASE
         WHEN t.first_treat_date IS NULL THEN NULL
         WHEN ecad_post.ecad_date IS NULL THEN NULL
-        WHEN DATE_PART('day', t.first_treat_date - ecad_post.ecas_date) <= t_dim.target_days
+        WHEN DATE_PART('day', t.first_treat_date - ecad_post.ecad_date) <= t_dim.target_days
         THEN 1 ELSE 0
     END AS rcr_within_target_flag,
 

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS warehouse.dim_rcr_targets (
     rcr_category TEXT PRIMARY KEY,
-    target_dayes INT NOT NULL,
+    target_days INT NOT NULL,
     target_hours INT NULL
 );
 

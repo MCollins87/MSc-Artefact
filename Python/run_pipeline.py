@@ -56,12 +56,15 @@ except Exception as e:
     raise
 
 # STEP2: DROP dependant opbects first
-run_sql_inline("DROP VIEW IF EXISTS warehouse.int_oncology_events;")
+run_sql_inline("""
+               DROP VIEW IF EXISTS warehouse.int_oncology_events;
+               DROP TABLE IF EXISTS warehouse.fact_rt_pathway;
+               """)
 
 # STEP 3: build Oncology fact first
 run_sql("../SQL/facts/fact_oncology_pathway.sql")
 
-# STEP 3: Intermediate
+# STEP 4: Intermediate
 
 run_sql("../SQL/intermediate/int_rt_referral.sql")
 run_sql("../SQL/intermediate/int_rt_booking_events.sql")
@@ -70,10 +73,11 @@ run_sql("../SQL/intermediate/int_rt_ct_events.sql")
 run_sql("../SQL/intermediate/int_rt_treat_events.sql")
 run_sql("../SQL/intermediate/int_oncology_events.sql")
 
-# STEP 3: Dimensions
+# STEP 5: Dimensions
 run_sql("../SQL/dimensions/dim_rcr_category.sql")
+run_sql("../SQL/dimensions/dim_rcr_targets.sql")
 
-# STEP 4: Final Treatment FACT Tables
+# STEP 6: Final Treatment FACT Tables
 
 run_sql("../SQL/facts/fact_rt_pathway.sql")
 

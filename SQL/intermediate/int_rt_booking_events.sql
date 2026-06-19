@@ -32,8 +32,8 @@ SELECT
     booked_by,
     d.rcr_category
 
-FROM booking_clean
+FROM booking_clean bc
 LEFT JOIN warehouse.dim_rcr_category d
     ON bc.activity_name = d.raw_activity_name
-    
+
 WHERE rn = 1;
