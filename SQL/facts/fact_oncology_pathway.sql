@@ -8,6 +8,8 @@ SELECT
     s.r_number,
     s.oncologist,
     s.tumour_site,
+    s.no_opa,
+    s.clinic_type,
 
     -- Core dates
     s.date_referred AS referral_date,

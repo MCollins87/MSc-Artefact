@@ -84,7 +84,7 @@ def load_data():
     logging.info("loading RT First Treatment data from CSV...")
     file_path = get_latest_file(DATA_PATH, "RT_Treat")
     logging.info(f"using file: {file_path}")
-    df = pd.read_csv(file_path, encoding="utf-8-sig")
+    df = pd.read_csv(file_path, encoding="utf-8-sig", dtype=str)
     logging.info("cleaning and transforming data...")
 
     df = clean_columns(df)
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     logging.info("Starting ETL process for ARIA First Treatment data.")
     try:
         df = load_data()
-        print(df["activity_instance_id"].value_counts().head())
+        logging.info(df["activity_instance_id"].value_counts().head())
         upsert_data(df)
     except Exception as e:
         logging.error(f"ETL process failed: {e}")

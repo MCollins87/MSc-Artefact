@@ -1,39 +1,29 @@
-
 DROP VIEW IF EXISTS warehouse.int_rt_booking_events;
 
 CREATE VIEW warehouse.int_rt_booking_events AS
 
-WITH booking_clean AS (
-    SELECT
-        b.activity_instance_id,
-        b.nhs_number,
-        b.r_number,
-        b.booking_due_date,
-        b.booking_status,
-        b.activity_name,
-        b.booked_by,
-
-        ROW_NUMBER() OVER (
-            PARTITION BY b.activity_instance_id
-            ORDER BY b.booking_due_date DESC
-        ) AS rn
-
-    FROM staging.aria_booking b
-    WHERE b.booking_due_date IS NOT NULL
-)
-
 SELECT
-    activity_instance_id,
-    nhs_number,
-    r_number,
-    booking_due_date,
-    booking_status,
-    activity_name,
-    booked_by,
-    d.rcr_category
+    b.r_number,
+    b.nhs_number,
 
-FROM booking_clean bc
+    -- Bookings completion
+    MIN(booking_due_date) FILTER (
+        WHERE booking_status = 'Completed'
+    ) AS booking_completed_date,
+
+    CASE 
+        WHEN COUNT(*) FILTER (
+            WHERE booking_status = 'Completed'
+        ) > 0 THEN 1
+        ELSE 0
+    END AS booking_completed_flag,
+
+    -- RCR Category
+    MIN(d.rcr_category) AS rcr_category
+
+FROM staging.aria_booking b
+
 LEFT JOIN warehouse.dim_rcr_category d
-    ON bc.activity_name = d.raw_activity_name
+    ON b.activity_name = d.raw_activity_name
 
-WHERE rn = 1;
+GROUP BY r_number, nhs_number;

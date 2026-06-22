@@ -66,14 +66,16 @@ def clean_columns(df):
         "pasnumber": "pas_number",
         "bookedby": "booked_by",
         "activityname": "activity_name",
+        "activityenddatetime": "booking_completed_date",
         "appointmentstatus": "booking_status",
         "ctractivityinstanceser": "activity_instance_id"
-    })
+        })
 
     return df
 
 def convert_dates(df):
     df['booking_due_date'] = pd.to_datetime(df['booking_due_date'], errors='coerce')
+    df['booking_completed_date'] = pd.to_datetime(df['booking_completed_date'], errors='coerce')
     return df
 
 def clean_value(val):
@@ -122,14 +124,15 @@ def upsert_data(df):
         records.append((
             clean_value(row.get('activity_instance_id')),
             clean_value(row.get('r_number')),
+            clean_value(row.get('nhs_number')),
             clean_value(row.get('booking_due_date')),
             clean_value(row.get('oncologist')),
             clean_value(row.get('booking_status')),
-            clean_value(row.get('nhs_number')),
             clean_value(row.get('pas_number')),
             clean_value(row.get('booked_by')),
             clean_value(row.get('activity_name')),
-            clean_value(row.get('diagnosis_icd10'))
+            clean_value(row.get('diagnosis_icd10')),
+            clean_value(row.get('booking_completed_date'))
         ))
 
     logging.info(f"Upserting {len(records)} records into the database.")
@@ -137,14 +140,15 @@ def upsert_data(df):
     INSERT INTO staging.aria_booking (
         activity_instance_id,
         r_number,
+        nhs_number,
         booking_due_date,
         oncologist,
         booking_status,
-        nhs_number,
         pas_number,
         booked_by,
         activity_name,
-        diagnosis_icd10
+        diagnosis_icd10,
+        booking_completed_date
     )
     VALUES %s
     ON CONFLICT (activity_instance_id)

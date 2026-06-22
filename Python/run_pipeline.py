@@ -57,6 +57,7 @@ except Exception as e:
 
 # STEP2: DROP dependant opbects first
 run_sql_inline("""
+               DROP VIEW IF EXISTS warehouse.int_rt_treat_summary;
                DROP VIEW IF EXISTS warehouse.int_oncology_events;
                DROP TABLE IF EXISTS warehouse.fact_rt_pathway;
                """)
@@ -71,6 +72,7 @@ run_sql("../SQL/intermediate/int_rt_booking_events.sql")
 run_sql("../SQL/intermediate/int_rt_ecad_events.sql")
 run_sql("../SQL/intermediate/int_rt_ct_events.sql")
 run_sql("../SQL/intermediate/int_rt_treat_events.sql")
+run_sql("../SQL/intermediate/int_rt_trt_summary.sql")
 run_sql("../SQL/intermediate/int_oncology_events.sql")
 
 # STEP 5: Dimensions
