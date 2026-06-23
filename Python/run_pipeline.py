@@ -50,16 +50,19 @@ try:
     run_python("etl/load_ecad.py")
     run_python("etl/load_ct.py")
     run_python("etl/load_treat.py")
+    run_python("etl/load_machine_appointments.py")
     run_python("etl/load_oncology.py")
 except Exception as e:
     logging.info(f"Pipeline failes {e}")
     raise
 
-# STEP2: DROP dependant opbects first
+# STEP2: DROP dependant objects first
 run_sql_inline("""
                DROP VIEW IF EXISTS warehouse.int_rt_treat_summary;
                DROP VIEW IF EXISTS warehouse.int_oncology_events;
                DROP TABLE IF EXISTS warehouse.fact_rt_pathway;
+               DROP VIEW IF EXISTS warehouse.int_rt_machine_capacity_window;
+               DROP VIEW IF EXISTS warehouse.int_rt_machine_appointments;
                """)
 
 # STEP 3: build Oncology fact first
@@ -74,6 +77,8 @@ run_sql("../SQL/intermediate/int_rt_ct_events.sql")
 run_sql("../SQL/intermediate/int_rt_treat_events.sql")
 run_sql("../SQL/intermediate/int_rt_trt_summary.sql")
 run_sql("../SQL/intermediate/int_oncology_events.sql")
+run_sql("../SQL/intermediate/int_rt_machine_appointments.sql")
+run_sql("../SQL/intermediate/int_rt_machine_capacity.sql")
 
 # STEP 5: Dimensions
 run_sql("../SQL/dimensions/dim_rcr_category.sql")
@@ -82,5 +87,6 @@ run_sql("../SQL/dimensions/dim_rcr_targets.sql")
 # STEP 6: Final Treatment FACT Tables
 
 run_sql("../SQL/facts/fact_rt_pathway.sql")
+run_sql("../SQL/facts/fact_rt_machine_capacity.sql")
 
 logging.info("Pipeline complete")
