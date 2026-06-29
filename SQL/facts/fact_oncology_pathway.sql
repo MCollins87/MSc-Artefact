@@ -13,6 +13,8 @@ SELECT
 
     -- Core dates
     s.date_referred AS referral_date,
+    s.date_received,
+    s.date_triaged,
     s.clinic_date AS first_clinic_date,
 
     -- Time dimensions
@@ -27,6 +29,11 @@ SELECT
         WHEN s.clinic_date IS NOT NULL
         THEN (s.clinic_date::DATE - s.date_referred::DATE)
     END AS days_to_clinic,
+
+    -- Intake stage intervals
+    (s.date_received::DATE - s.date_referred::DATE) AS days_referral_to_received,
+    (s.date_triaged::DATE - s.date_received::DATE) AS days_received_to_triage,
+    (s.clinic_date::DATE - s.date_triaged::DATE) AS days_triage_to_clinic,
 
     CURRENT_TIMESTAMP AS load_timestamp
 

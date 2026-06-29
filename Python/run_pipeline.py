@@ -88,5 +88,6 @@ run_sql("../SQL/dimensions/dim_rcr_targets.sql")
 
 run_sql("../SQL/facts/fact_rt_pathway.sql")
 run_sql("../SQL/facts/fact_rt_machine_capacity.sql")
+run_sql("../sql/facts/fact_full_pathway.sql")
 
 logging.info("Pipeline complete")

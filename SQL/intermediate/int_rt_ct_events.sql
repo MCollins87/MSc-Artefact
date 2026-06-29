@@ -20,6 +20,7 @@ WITH ct_clean AS (
 
     FROM staging.stg_aria_ct c
     WHERE c.ct_date IS NOT NULL
+        AND c.appointment_status ILIKE '%Completed%'
 )
 
 SELECT

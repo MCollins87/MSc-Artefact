@@ -7,9 +7,16 @@ SELECT
     b.nhs_number,
 
     -- Bookings completion
-    MIN(booking_due_date) FILTER (
+    MIN(booking_completed_date) FILTER (
         WHERE booking_status = 'Completed'
     ) AS booking_completed_date,
+
+    CASE
+        WHEN MIN(booking_completed_date) FILTER (
+            WHERE booking_status = 'Completed'
+        ) IS NOT NULL
+        THEN 1 ELSE 0
+    END AS has_valid_booking_timestamp,
 
     CASE 
         WHEN COUNT(*) FILTER (
