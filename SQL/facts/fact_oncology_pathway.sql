@@ -7,7 +7,7 @@ SELECT
     s.nhs_number,
     s.r_number,
     s.oncologist,
-    s.tumour_site,
+    s.speciality_referred,
     s.no_opa,
     s.clinic_type,
 

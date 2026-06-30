@@ -64,7 +64,8 @@ def clean_columns(df):
     df = df.rename(columns={
         "clin_/_med": "clin_med",
         "new_clinic_date": "clinic_date",
-        "date_recieved": "date_received"  # fix spelling
+        "date_recieved": "date_received",  # fix spelling
+        "tumour_site": "speciality_referred"
     })
 
     return df
@@ -156,7 +157,7 @@ def upsert_data(df):
             clean_value(row.get("nhs_number")),
             clean_value(row.get("r_number")),
             clean_value(row.get("name")),
-            clean_value(row.get("tumour_site")),
+            clean_value(row.get("speciality_referred")),
             clean_value(row.get("oncologist")),
             clean_value(row.get("referral_source")),
             clean_value(row.get("date_referred")),
@@ -178,7 +179,7 @@ def upsert_data(df):
             nhs_number,
             r_number,
             patient_name,
-            tumour_site,
+            speciality_referred,
             oncologist,
             referral_source,
             date_referred,

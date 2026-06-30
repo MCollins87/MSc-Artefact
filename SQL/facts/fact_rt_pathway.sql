@@ -1,8 +1,14 @@
 DROP TABLE IF EXISTS warehouse.fact_rt_pathway;
 
 CREATE TABLE warehouse.fact_rt_pathway AS
+WITH base_raw AS(
+    SELECT
+        r.*,
+        LEFT(REPLACE(UPPER(r.diagnosis_icd10), '.', ''),3) AS icd_prefix
+    FROM warehouse.int_rt_referral r
+),
 
-WITH base AS (
+base AS (
     SELECT
         -- KEYS
         MD5(r.nhs_number || r.rt_referral_date::TEXT) AS rt_pathway_id,
@@ -15,6 +21,7 @@ WITH base AS (
         -- ONCOLOGY
         o.referral_date AS oncology_referral_date,
         o.first_clinic_date AS oncology_clinic_date,
+        o.speciality_referred,
 
         -- EVENTS
         ecad.ecad_date AS ecad_referral_date,
@@ -23,16 +30,23 @@ WITH base AS (
 
         -- CONTEXT
         r.diagnosis_icd10,
+        r.icd_prefix,
         r.oncologist,
         b_complete.rcr_category,
         t_dim.target_days,
         b_complete.booking_completed_date,
 
+        CASE
+            WHEN r.diagnosis_icd10 IS NULL THEN 'Missing ICD'
+            WHEN tg.tumour_group IS NULL THEN 'Unmapped'
+            ELSE tg.tumour_group
+        END AS tumour_group,
+
         -- FLAGS FROM TREATMENT
         COALESCE(t.has_completed,0) AS has_completed,
         COALESCE(t.has_active_booking,0) AS has_active_booking
 
-    FROM warehouse.int_rt_referral r
+    FROM base_raw r
 
     LEFT JOIN warehouse.int_rt_booking_events b_complete
         ON b_complete.r_number = r.r_number
@@ -71,14 +85,32 @@ WITH base AS (
     ) t ON TRUE
 
     -- ONCOLOGY
+
     LEFT JOIN LATERAL (
-        SELECT o.referral_date, o.first_clinic_date
+        SELECT 
+            o.referral_date, 
+            o.first_clinic_date,
+            fo.speciality_referred
         FROM warehouse.int_oncology_events o
+        LEFT JOIN warehouse.fact_oncology_pathway fo
+            ON fo.nhs_number = o.nhs_number
+        AND fo.referral_date = o.referral_date
         WHERE o.nhs_number = r.nhs_number
-          AND o.referral_date <= r.rt_referral_date
+        AND o.referral_date <= r.rt_referral_date
         ORDER BY o.referral_date DESC
         LIMIT 1
     ) o ON TRUE
+
+
+    -- Tumour group
+    LEFT JOIN LATERAL(
+        SELECT m.tumour_group
+        FROM warehouse.dim_icd10_mapping m
+        WHERE r.icd_prefix BETWEEN m.code_start AND m.code_end
+        AND m.include_flag = 1
+        ORDER BY m.priority
+        LIMIT 1
+    ) tg ON TRUE
 )
 
 , enriched AS (
@@ -124,13 +156,47 @@ SELECT
     -- =====================
     -- INTERVALS
     -- =====================
+    CASE 
+        WHEN oncology_clinic_date >= oncology_referral_date
+        THEN DATE_PART('day', oncology_clinic_date - oncology_referral_date)
+        ELSE NULL
+    END AS days_onc_to_clinic,
+    CASE
+        WHEN rt_referral_date >= oncology_clinic_date
+        THEN DATE_PART('day', rt_referral_date - oncology_clinic_date)
+        ELSE NULL
+    END AS days_clinic_to_rt,
     GREATEST(DATE_PART('day', rt_referral_date - oncology_referral_date), 0) AS days_oncology_to_rt,
-    DATE_PART('day', booking_completed_date - rt_referral_date) AS days_rt_to_booking,
-    DATE_PART('day', ct_date - rt_referral_date) AS days_rt_to_ct,
-    DATE_PART('day', ct_date - booking_completed_date) AS days_booking_to_ct,
-    DATE_PART('day', first_completed_treat_date - rt_referral_date) AS days_rt_to_treat,
-    DATE_PART('day', first_completed_treat_date - ecad_referral_date) AS days_ecad_to_treat,
-    DATE_PART('day', first_completed_treat_date - ct_date) AS days_ct_to_treat
+    CASE
+        WHEN booking_completed_date >= rt_referral_date
+        THEN DATE_PART('day', booking_completed_date - rt_referral_date)
+        ELSE NULL
+    END AS days_rt_to_booking,
+    CASE
+        WHEN ct_date >= rt_referral_date
+        THEN DATE_PART('day', ct_date - rt_referral_date)
+        ELSE NULL
+    END AS days_rt_to_ct,
+    CASE 
+        WHEN ct_date >= booking_completed_date
+        THEN DATE_PART('day', ct_date - booking_completed_date)
+        ELSE NULL
+    END AS days_booking_to_ct,
+    CASE
+        WHEN first_completed_treat_date >= rt_referral_date
+        THEN DATE_PART('day', first_completed_treat_date - rt_referral_date)
+        ELSE NULL
+    END AS days_rt_to_treat,
+    CASE
+        WHEN first_completed_treat_date >= ecad_referral_date
+        THEN DATE_PART('day', first_completed_treat_date - ecad_referral_date)
+        ELSE NULL
+    END AS days_ecad_to_treat,
+    CASE
+        WHEN first_completed_treat_date >= ct_date
+        THEN DATE_PART('day', first_completed_treat_date - ct_date)
+        ELSE NULL
+    END AS days_ct_to_treat
 
 FROM base
 )

@@ -24,8 +24,11 @@ SELECT
     has_active_booking,
     has_completed,
     has_ct_flag,
+    valid_clinical_delay_flag,
     
     -- Intervals
+    days_onc_to_clinic,
+    days_clinic_to_rt,
     days_oncology_to_rt,
     days_rt_to_booking,
     days_booking_to_ct,
@@ -45,6 +48,11 @@ SELECT
     days_to_62_breach,
     predicted_breach_flag,
     overdue_62_day,
+
+    -- Contect
+    oncologist,
+    tumour_group,
+    speciality_referred,
 
     CURRENT_TIMESTAMP AS load_timestamp
 

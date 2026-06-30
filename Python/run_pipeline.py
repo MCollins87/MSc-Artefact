@@ -57,12 +57,15 @@ except Exception as e:
     raise
 
 # STEP2: DROP dependant objects first
+logging.info("Dopping dependent objects")
 run_sql_inline("""
+               DROP VIEW IF EXISTS warehouse.fact_full_pathway;
                DROP VIEW IF EXISTS warehouse.int_rt_treat_summary;
                DROP VIEW IF EXISTS warehouse.int_oncology_events;
-               DROP TABLE IF EXISTS warehouse.fact_rt_pathway;
                DROP VIEW IF EXISTS warehouse.int_rt_machine_capacity_window;
                DROP VIEW IF EXISTS warehouse.int_rt_machine_appointments;
+               DROP TABLE IF EXISTS warehouse.fact_rt_pathway;
+               DROP TABLE IF EXISTS warehouse.fact_rt_machine_capacity;
                """)
 
 # STEP 3: build Oncology fact first
