@@ -19,12 +19,14 @@ SELECT
     booking_completed_date,
     ct_date,
     first_completed_treat_date AS treatment_date,
+    ecad_referral_date,
 
     -- Flags
     has_active_booking,
     has_completed,
     has_ct_flag,
     valid_clinical_delay_flag,
+    rcr_category,
     
     -- Intervals
     days_onc_to_clinic,
@@ -36,18 +38,24 @@ SELECT
 
     days_oncology_to_treatment,
     days_rt_to_treatment,
-
+    days_ecad_to_treatment,
+    
     -- Targets
     cwt_31_day_flag,
     cwt_62_day_flag,
+    target_days,
 
     performance_group,
 
     --Live risk
-    days_to_31_breach,
     days_to_62_breach,
     predicted_breach_flag,
     overdue_62_day,
+    operational_risk_group,
+    active_rcr_breach_flag,
+    days_to_rcr_breach,
+    booking_rag_status,
+    next_treatment_date,
 
     -- Contect
     oncologist,
