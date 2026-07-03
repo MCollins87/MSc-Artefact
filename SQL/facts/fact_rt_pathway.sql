@@ -4,13 +4,7 @@ CREATE TABLE warehouse.fact_rt_pathway AS
 WITH base_raw AS(
     SELECT
         r.*,
-        LEFT(REPLACE(UPPER(r.diagnosis_icd10), '.', ''),3) AS icd_prefix,
-    
-    LEAD(r.rt_referral_date) Over (
-        PARTITION BY r.nhs_number
-        ORDER BY r.rt_referral_date
-    ) AS next_rt_referral_date
-
+        LEFT(REPLACE(UPPER(r.diagnosis_icd10), '.', ''),3) AS icd_prefix
     FROM warehouse.int_rt_referral r
 ),
 
@@ -24,7 +18,6 @@ base AS (
         -- CORE
         r.rt_referral_date,
 
-
         -- ONCOLOGY
         o.referral_date AS oncology_referral_date,
         o.first_clinic_date AS oncology_clinic_date,
@@ -34,7 +27,6 @@ base AS (
         ecad.ecad_date AS ecad_referral_date,
         ct.ct_date,
         t.first_completed_treat_date,
-        t.next_treatment_date,
 
         -- CONTEXT
         r.diagnosis_icd10,
@@ -52,8 +44,7 @@ base AS (
 
         -- FLAGS FROM TREATMENT
         COALESCE(t.has_completed,0) AS has_completed,
-        COALESCE(t.has_active_booking,0) AS has_active_booking,
-        COALESCE(t.has_cancelled,0) AS has_cancelled
+        COALESCE(t.has_active_booking,0) AS has_active_booking
 
     FROM base_raw r
 
@@ -64,24 +55,13 @@ base AS (
         ON b_complete.rcr_category = t_dim.rcr_category  
 
     -- ECAD
-
     LEFT JOIN LATERAL (
         SELECT e.ecad_date
         FROM warehouse.int_rt_ecad_events e
         WHERE e.r_number = r.r_number
-        AND e.ecad_date >= r.rt_referral_date - INTERVAL '7 days'
-        AND (
-            r.next_rt_referral_date IS NULL
-            OR e.ecad_date < r.next_rt_referral_date
-        )
-        ORDER BY ABS(
-            EXTRACT(EPOCH FROM (
-                e.ecad_date - r.rt_referral_date
-            ))
-        )
+        ORDER BY ABS(EXTRACT(EPOCH FROM (e.ecad_date - r.rt_referral_date)))
         LIMIT 1
     ) ecad ON TRUE
-
 
     -- CT
     LEFT JOIN LATERAL (
@@ -89,10 +69,6 @@ base AS (
         FROM warehouse.int_rt_ct_events ct
         WHERE ct.r_number = r.r_number
           AND ct.ct_date >= r.rt_referral_date
-          AND(
-            r.next_rt_referral_date IS NULL
-            OR ct.ct_date < r.next_rt_referral_date
-          )
         ORDER BY ct.ct_date
         LIMIT 1
     ) ct ON TRUE
@@ -102,16 +78,10 @@ base AS (
         SELECT
             MAX(CASE WHEN appointment_status_group = 'Completed' THEN 1 ELSE 0 END) AS has_completed,
             MAX(CASE WHEN appointment_status_group IN ('Open','In Progress') THEN 1 ELSE 0 END) AS has_active_booking,
-            MIN(CASE WHEN appointment_status_group = 'Completed' THEN first_treat_date END) AS first_completed_treat_date,
-            MAX(CASE WHEN appointment_status_group ILIKE 'Cancelled%' THEN 1 ELSE 0 END) AS has_cancelled,
-            MIN(CASE WHEN appointment_status_group IN ('Open','In Progress') THEN first_treat_date END) AS next_treatment_date
+            MIN(CASE WHEN appointment_status_group = 'Completed' THEN first_treat_date END) AS first_completed_treat_date
         FROM warehouse.int_rt_treat_events t
         WHERE t.r_number = r.r_number
           AND t.first_treat_date >= r.rt_referral_date
-          AND (
-            r.next_rt_referral_date IS NULL
-            OR t.first_treat_date < r.next_rt_referral_date
-          )
     ) t ON TRUE
 
     -- ONCOLOGY
@@ -157,7 +127,6 @@ SELECT
     
     CASE
         WHEN has_completed = 1 THEN 'Treated'
-        WHEN has_cancelled = 1 AND has_active_booking = 0 THEN 'Closed - Cancelled'
         WHEN has_active_booking = 1 THEN 'Active'
         WHEN has_completed = 0 
          AND has_active_booking = 0
@@ -169,7 +138,6 @@ SELECT
     CASE
         WHEN has_completed = 1 THEN 0
         WHEN has_active_booking = 1 THEN 1
-        WHEN has_cancelled = 1 AND has_active_booking = 0 THEN 0
         ELSE 0
     END AS is_active_pathway,
 
@@ -188,7 +156,6 @@ SELECT
     -- =====================
     -- INTERVALS
     -- =====================
-    DATE_PART('day', next_treatment_date - COALESCE(ecad_referral_date, rt_referral_date)) AS days_ecad_to_treatment,
     CASE 
         WHEN oncology_clinic_date >= oncology_referral_date
         THEN DATE_PART('day', oncology_clinic_date - oncology_referral_date)
@@ -289,26 +256,10 @@ SELECT
 
     CASE
         WHEN has_completed = 0
-        AND DATE_PART('day', CURRENT_DATE - COALESCE(ecad_referral_date, rt_referral_date)) > target_days
+        AND ecad_referral_date IS NOT NULL
+        AND DATE_PART('day', CURRENT_DATE - ecad_referral_date) > target_days
         THEN 1 ELSE 0
     END AS active_rcr_breach_flag,
-
-    CASE
-        WHEN has_completed = 0 THEN
-        DATE_PART('day', CURRENT_DATE - COALESCE(ecad_referral_date, rt_referral_date))
-        ELSE NULL
-    END AS active_days_since_ECAD,
-
-    CASE
-        WHEN next_treatment_date IS NULL
-        THEN 'Unbooked'
-        WHEN DATE_PART('day', next_treatment_date - COALESCE(ecad_referral_date, rt_referral_date)) <= target_days
-        THEN 'GREEN'
-        WHEN DATE_PART('day', next_treatment_date - COALESCE(ecad_referral_date, rt_referral_date)) <= 31
-        THEN 'AMBER'
-        ELSE 'RED'
-    END AS booking_rag_status,
-
 
     -- =====================
     -- OVERDUE (ACTIVE ONLY)
@@ -368,21 +319,9 @@ SELECT
 
     CASE
         WHEN has_completed = 0 THEN
-            target_days - DATE_PART('day', CURRENT_DATE - COALESCE(ecad_referral_date, rt_referral_date))
-    END AS days_to_rcr_breach,
-
-    COALESCE(ecad_referral_date, rt_referral_date) AS operational_start_date,
-
-    CASE
-        WHEN has_completed = 1
-            THEN 'Completed'
-        WHEN DATE_PART('day', CURRENT_DATE - COALESCE(ecad_referral_date, rt_referral_date)) > target_days
-            THEN 'Breaching'
-        WHEN DATE_PART('day', CURRENT_DATE - COALESCE(ecad_referral_date, rt_referral_date)) > target_days - 7
-            THEN 'At Risk'
-        ELSE 'Within Target'
-    END AS operational_risk_group,
-
+            31 - DATE_PART('day', CURRENT_DATE - rt_referral_date)
+        ELSE NULL
+    END AS days_to_31_breach,
 
 
     CURRENT_TIMESTAMP AS load_timestamp

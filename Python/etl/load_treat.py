@@ -115,29 +115,6 @@ def load_data():
     logging.info(f"loaded {len(df)} rows.")
     return df
 
-def reconcile_deleted_appointments(df):
-    logging.info("reconciling deleted appointments...")
-    conn = psycopg2.connect(**DB_CONFIG)
-    cursor = conn.cursor()
-
-    activity_ids = df["activity_instance_id"].tolist()
-    if not activity_ids:
-        logging.info("No activity ID's found in the current ectract.")
-        return
-    query = """
-        DELETE FROM staging.stg_aria_treat
-        WHERE first_treat_date BETWEEN
-            CURRENT_DATE - INTERVAL '1 day'
-        AND CURRENT_DATE + INTERVAL '90 days'
-        AND activity_instance_id NOT IN %s
-    """
-    cursor.execute(query, (tuple(activity_ids),))
-    deleted = cursor.rowcount
-    conn.commit()
-    cursor.close()
-    conn.close()
-    logging.info(f"Deleted {deleted} rows from staging.stg_aria_treat that were not present in the current extract.")
-
 def upsert_data(df):
     logging.info("upserting data into PostgreSQL...")
     conn = psycopg2.connect(**DB_CONFIG)
@@ -193,7 +170,6 @@ if __name__ == "__main__":
         df = load_data()
         logging.info(df["activity_instance_id"].value_counts().head())
         upsert_data(df)
-        reconcile_deleted_appointments(df)
     except Exception as e:
         logging.error(f"ETL process failed: {e}")
         raise
