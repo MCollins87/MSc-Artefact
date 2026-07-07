@@ -67,7 +67,8 @@ def clean_columns(df):
         "resourcename": "resource_name",
         "nhsnumber": "nhs_number",
         "pasnumber": "pas_number",
-        "ctractivityinstanceser": "activity_instance_id"
+        "ctractivityinstanceser": "activity_instance_id",
+        "activitynote": "activity_note"
     })
     return df
 
@@ -156,7 +157,8 @@ def upsert_data(df):
             clean_value(row["treat_activity_name"]),
             clean_value(row["resource_name"]),
             clean_value(row["nhs_number"]),
-            clean_value(row["pas_number"])
+            clean_value(row["pas_number"]),
+            clean_value(row["activity_note"])
         ))
 
     logging.info(f"Inserting {len(records)} rows")
@@ -170,7 +172,8 @@ def upsert_data(df):
             treat_activity_name,
             resource_name,
             nhs_number,
-            pas_number
+            pas_number,
+            activity_note
         )
         VALUES %s
         ON CONFLICT (activity_instance_id)
@@ -178,7 +181,8 @@ def upsert_data(df):
         first_treat_date = EXCLUDED.first_treat_date,
         appointment_status = EXCLUDED.appointment_status,  
         resource_name = EXCLUDED.resource_name,
-        oncologist = EXCLUDED.oncologist;
+        oncologist = EXCLUDED.oncologist,
+        activity_note = EXCLUDED.activity_note
     """
 
     execute_values(cursor, query, records)

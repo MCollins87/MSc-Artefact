@@ -57,10 +57,11 @@ SELECT
     booking_rag_status,
     next_treatment_date,
 
-    -- Contect
+    -- Context
     oncologist,
     tumour_group,
     speciality_referred,
+    activity_note,
 
     CURRENT_TIMESTAMP AS load_timestamp
 

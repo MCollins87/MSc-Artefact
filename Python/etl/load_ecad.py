@@ -61,7 +61,8 @@ def clean_columns(df):
         "primaryoncologist": "oncologist",
         "nhsnumber": "nhs_number",
         "pasnumber": "pas_number",
-        "ctractivityinstanceser": "activity_instance_id"
+        "ctractivityinstanceser": "activity_instance_id",
+        "appointmentstatus": "appointment_status",
     })
 
     return df
@@ -84,6 +85,8 @@ def load_data():
     logging.info("Cleaning column names and renaming columns")
     df = clean_columns(df)
     df = convert_dates(df)
+
+    df["appointment_status"] = df["appointment_status"].fillna("").str.strip().str.upper()
 
     # Clean key column
     df['activity_instance_id'] = df['activity_instance_id'].astype(str).str.strip()
@@ -120,7 +123,8 @@ def upsert_data(df):
             clean_value(row.get('oncologist')),
             clean_value(row.get('nhs_number')),
             clean_value(row.get('pas_number')),
-            clean_value(row.get('diagnosis_icd10'))
+            clean_value(row.get('diagnosis_icd10')),
+            clean_value(row.get('appointment_status'))
         ))
 
         logging.info(f"Upserting {len(records)} records into the database.")
@@ -132,13 +136,15 @@ def upsert_data(df):
         oncologist,
         nhs_number,
         pas_number,
-        diagnosis_icd10
+        diagnosis_icd10,
+        appointment_status
     )
     VALUES %s
     ON CONFLICT (activity_instance_id)
     DO UPDATE SET
     ecad = EXCLUDED.ecad,
-    oncologist = EXCLUDED.oncologist;
+    oncologist = EXCLUDED.oncologist,
+    appointment_status = EXCLUDED.appointment_status;
     """
 
     execute_values(cursor, query, records)
@@ -147,11 +153,33 @@ def upsert_data(df):
     conn.close()
     logging.info("Data upsert complete.")
 
+def reconcile_deleted_ecads(df):
+    logging.info("Reconciling deleted ECADs.")
+
+    conn = psycopg2.connect(**DB_CONFIG)
+    cursor = conn.cursor()
+    activity_ids = tuple(df["activity_instance_id"].tolist())
+    cursor.execute(
+        """
+        DELETE FROM staging.aria_ecad
+        WHERE ecad >=CURRENT_DATE - INTERVAL '90 days'
+        AND activity_instance_id NOT IN %s
+        """,
+        (activity_ids,)
+    )
+    logging.info(f"Deleted {cursor.rowcount} records from staging.aria_ecad that are no longer present in the source data.")
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+
 if __name__ == "__main__":
     logging.info("Starting ETL process for ECAD data.")
     try:
         df = load_data()
         upsert_data(df)
+        reconcile_deleted_ecads(df)
     except Exception as e:
         logging.error(f"ETL process failed: {e}")
         raise

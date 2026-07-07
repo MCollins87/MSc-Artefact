@@ -12,6 +12,7 @@ SELECT
     t.resource_name,
     t.treat_activity_name,
     t.oncologist,
+    t.activity_note,
     
 CASE
     WHEN t.appointment_status ILIKE '%cancel%' THEN 'Cancelled'

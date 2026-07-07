@@ -43,6 +43,7 @@ base AS (
         b_complete.rcr_category,
         t_dim.target_days,
         b_complete.booking_completed_date,
+        t.activity_note,
 
         CASE
             WHEN r.diagnosis_icd10 IS NULL THEN 'Missing ICD'
@@ -74,11 +75,7 @@ base AS (
             r.next_rt_referral_date IS NULL
             OR e.ecad_date < r.next_rt_referral_date
         )
-        ORDER BY ABS(
-            EXTRACT(EPOCH FROM (
-                e.ecad_date - r.rt_referral_date
-            ))
-        )
+        ORDER BY e.ecad_date DESC
         LIMIT 1
     ) ecad ON TRUE
 
@@ -104,7 +101,8 @@ base AS (
             MAX(CASE WHEN appointment_status_group IN ('Open','In Progress') THEN 1 ELSE 0 END) AS has_active_booking,
             MIN(CASE WHEN appointment_status_group = 'Completed' THEN first_treat_date END) AS first_completed_treat_date,
             MAX(CASE WHEN appointment_status_group ILIKE 'Cancelled%' THEN 1 ELSE 0 END) AS has_cancelled,
-            MIN(CASE WHEN appointment_status_group IN ('Open','In Progress') THEN first_treat_date END) AS next_treatment_date
+            MIN(CASE WHEN appointment_status_group IN ('Open','In Progress') THEN first_treat_date END) AS next_treatment_date,
+            MAX(CASE WHEN appointment_status_group IN ('Open','In Progress') THEN activity_note END) AS activity_note
         FROM warehouse.int_rt_treat_events t
         WHERE t.r_number = r.r_number
           AND t.first_treat_date >= r.rt_referral_date

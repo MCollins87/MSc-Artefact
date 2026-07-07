@@ -89,6 +89,7 @@ run_sql("../SQL/dimensions/dim_rcr_targets.sql")
 
 # STEP 6: Final Treatment FACT Tables
 
+run_sql("../SQL/facts/fact_predicted_rt_demand.sql")
 run_sql("../SQL/facts/fact_rt_pathway.sql")
 run_sql("../SQL/facts/fact_rt_machine_capacity.sql")
 run_sql("../sql/facts/fact_full_pathway.sql")
