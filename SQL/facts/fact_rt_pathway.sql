@@ -27,7 +27,9 @@ base AS (
 
         -- ONCOLOGY
         o.referral_date AS oncology_referral_date,
+        o.first_booking_date AS oncology_booking_date,
         o.first_clinic_date AS oncology_clinic_date,
+        o.appointment_attendance_status AS oncology_appointment_attendance_status,
         o.speciality_referred,
 
         -- EVENTS
@@ -117,6 +119,8 @@ base AS (
     LEFT JOIN LATERAL (
         SELECT 
             o.referral_date, 
+            o.first_booking_date,
+            o.appointment_attendance_status,
             o.first_clinic_date,
             fo.speciality_referred
         FROM warehouse.int_oncology_events o
@@ -227,7 +231,17 @@ SELECT
         WHEN first_completed_treat_date >= ct_date
         THEN DATE_PART('day', first_completed_treat_date - ct_date)
         ELSE NULL
-    END AS days_ct_to_treat
+    END AS days_ct_to_treat,
+
+    CASE
+        WHEN oncology_booking_date >= oncology_referral_date
+        THEN DATE_PART('day', oncology_booking_date - oncology_referral_date)
+    END AS days_oncology_to_booking,
+
+    CASE
+        WHEN oncology_clinic_date >= oncology_booking_date
+        THEN DATE_PART('day', oncology_clinic_date - oncology_booking_date)
+    END AS days_oncology_booking_to_oncology_clinic
 
 FROM base
 )

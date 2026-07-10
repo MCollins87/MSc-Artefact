@@ -8,6 +8,8 @@ WITH oncology_clean AS (
         o.nhs_number,
         o.referral_date,
         o.first_clinic_date,
+        o.first_booking_date,
+        o.appointment_attendance_status,
 
         ROW_NUMBER() OVER (
             PARTITION BY o.nhs_number, o.referral_date
@@ -21,7 +23,9 @@ WITH oncology_clean AS (
 SELECT
     nhs_number,
     referral_date,
-    first_clinic_date
+    first_booking_date,
+    first_clinic_date,
+    appointment_attendance_status
 
 FROM oncology_clean
 WHERE rn = 1;

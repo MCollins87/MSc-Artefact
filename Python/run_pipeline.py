@@ -69,10 +69,12 @@ run_sql_inline("""
                DROP TABLE IF EXISTS warehouse.fact_rt_machine_capacity;
                """)
 
-# STEP 3: build Oncology fact first
+# STEP 3: Oncology Pathway
+run_sql("../SQL/intermediate/int_oncology_clinic_events.sql")
 run_sql("../SQL/facts/fact_oncology_pathway.sql")
+run_sql("../SQL/intermediate/int_oncology_events.sql")
 
-# STEP 4: Intermediate
+# STEP 4: RT Intermediate
 
 run_sql("../SQL/intermediate/int_rt_referral.sql")
 run_sql("../SQL/intermediate/int_rt_booking_events.sql")
@@ -80,7 +82,6 @@ run_sql("../SQL/intermediate/int_rt_ecad_events.sql")
 run_sql("../SQL/intermediate/int_rt_ct_events.sql")
 run_sql("../SQL/intermediate/int_rt_treat_events.sql")
 run_sql("../SQL/intermediate/int_rt_trt_summary.sql")
-run_sql("../SQL/intermediate/int_oncology_events.sql")
 run_sql("../SQL/intermediate/int_rt_machine_appointments.sql")
 run_sql("../SQL/intermediate/int_rt_machine_capacity.sql")
 

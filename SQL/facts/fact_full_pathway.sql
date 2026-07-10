@@ -12,7 +12,10 @@ SELECT
 
     -- Oncology dates
     oncology_referral_date,
+    oncology_booking_date,
     oncology_clinic_date,
+    oncology_appointment_attendance_status,
+
 
     -- RT dates
     rt_referral_date,
@@ -29,6 +32,8 @@ SELECT
     rcr_category,
     
     -- Intervals
+    days_oncology_booking_to_oncology_clinic,
+    days_oncology_to_booking,
     days_onc_to_clinic,
     days_clinic_to_rt,
     days_oncology_to_rt,
