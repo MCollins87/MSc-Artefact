@@ -132,7 +132,7 @@ def load_data():
     else:
         df["source_id"] = df.index
 
-    logging.info(f"✅ Loaded {len(df)} rows")
+    logging.info(f"Loaded {len(df)} rows")
 
     return df
 
@@ -171,7 +171,7 @@ def upsert_data(df):
             clean_value(row.get("no_opa"))
         ))
 
-    logging.info("🔄 Inserting data...")
+    logging.info("Inserting data...")
 
     query = """
         INSERT INTO staging.stg_oncology_intake (
@@ -206,7 +206,7 @@ def upsert_data(df):
     cursor.close()
     conn.close()
 
-    logging.info("✅ Data loaded successfully")
+    logging.info("Data loaded successfully")
 
 
 # ----------------------------------------

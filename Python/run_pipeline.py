@@ -59,6 +59,7 @@ except Exception as e:
 # STEP2: DROP dependant objects first
 logging.info("Dopping dependent objects")
 run_sql_inline("""
+               DROP VIEW IF EXISTS warehouse.fact_predicted_rt_demand;
                DROP VIEW IF EXISTS warehouse.fact_full_pathway;
                DROP VIEW IF EXISTS warehouse.int_rt_treat_summary;
                DROP VIEW IF EXISTS warehouse.int_oncology_events;

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS warehouse.dim_rcr_targets (
 
 INSERT INTO warehouse.dim_rcr_targets (rcr_category, target_days, target_hours)
 VALUES
-('CAT1', 21, NULL),
+('CAT1', 17, NULL),
 ('CAT2', 31, NULL),
 ('CAT3', 14, NULL),
 ('CAT3+', 5, NULL),
