@@ -62,7 +62,7 @@ def clean_columns(df):
     )
 
     df = df.rename(columns={
-        "clin_/_med": "clin_med",
+        "clin_/_med": "clinic_type",
         "new_clinic_date": "clinic_date",
         "date_recieved": "date_received",  # fix spelling
         "tumour_site": "speciality_referred"

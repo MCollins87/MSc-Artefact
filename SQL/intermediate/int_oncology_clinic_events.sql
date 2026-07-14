@@ -7,7 +7,8 @@ WITH clinic_rollup AS(
         pas_number,
         nhs_number,
         MIN(booking_date) AS first_booking_date,
-        MIN(appointment_date) AS first_appointment_date
+        MIN(appointment_date) AS first_appointment_date,
+        MAX(ref_to_local_code) AS clinic_speciality
      FROM staging.oncology_clinic
      GROUP BY pas_number, nhs_number
 )
@@ -15,6 +16,7 @@ WITH clinic_rollup AS(
 SELECT
     r.*,
     c.appointment_attendance_status
+
 FROM clinic_rollup r
 
 LEFT JOIN staging.oncology_clinic c
