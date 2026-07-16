@@ -29,11 +29,25 @@ SELECT
     CASE WHEN clinic.first_clinic_date IS NOT NULL THEN 1 ELSE 0 END AS has_clinic,
     CASE 
         WHEN clinic.first_clinic_date IS NULL
-            AND no_opa IS NULL
+            AND COALESCE(TRIM(no_opa), '') = ''
+            AND referral_source NOT IN ('SRH', 'IOW')
         THEN 1
         ELSE 0
     END AS active_referral_flag,
 
+    CASE
+        WHEN s.referral_source IN ('SRH', 'IOW')
+        THEN 1
+        ELSE 0
+    END AS external_provider_flag,
+
+    CASE
+        WHEN s.no_opa IS NOT NULL
+        THEN 1
+        ELSE 0
+    END AS non_standard_pathway_flag,
+    
+   
     -- Metrics
     CASE
         WHEN clinic.first_clinic_date IS NOT NULL 
@@ -54,14 +68,13 @@ SELECT
     
     -- Intake stage intervals
     
-    -- (s.date_received::DATE - s.date_referred::DATE) AS days_referral_to_received,
-    (COALESCE(s.date_received::DATE, s.date_referred::DATE) - s.date_referred::DATE) AS days_referral_to_recieved,
+    (COALESCE(s.date_received::DATE, s.date_referred::DATE) - s.date_referred::DATE) AS days_referral_to_received,
     (clinic.first_booking_date::DATE - COALESCE(s.date_received::DATE, s.date_referred::DATE)) AS days_received_to_triage,
     (clinic.first_clinic_date::DATE - clinic.first_booking_date::DATE) AS days_triage_to_clinic,
 
     CURRENT_TIMESTAMP AS load_timestamp
 
-FROM staging.stg_oncology_intake s
+FROM warehouse.int_oncology_referrals s
 
 LEFT JOIN LATERAL (
     SELECT
@@ -71,17 +84,31 @@ LEFT JOIN LATERAL (
         c.ref_to_local_code
     FROM staging.oncology_clinic c
     WHERE REPLACE(c.nhs_number, ' ', '') = REPLACE(s.nhs_number, ' ', '')
-    AND c.booking_date >= COALESCE(s.date_received, s.date_referred)
+    AND c.booking_date >= s.date_referred
     ORDER BY c.booking_date
     LIMIT 1
 ) clinic ON TRUE
 
--- LEFT JOIN warehouse.int_oncology_clinic_events c
---     ON REPLACE(c.nhs_number, ' ', '') = REPLACE(s.nhs_number, ' ', '')
+
 
 WHERE s.date_referred IS NOT NULL
-)
+),
 
+enriched AS (
+    SELECT
+        *,
+
+
+    CASE
+        WHEN first_clinic_date > CURRENT_DATE
+            THEN DATE_PART('day', first_clinic_date - referral_date)
+        WHEN first_clinic_date IS NOT NULL
+            THEN days_to_clinic
+        ELSE current_wait_days
+    END AS wait_days_for_chart
+FROM base
+WHERE COALESCE(no_opa, '') <> 'Duplicate'
+)
 
 SELECT
     *,
@@ -90,5 +117,52 @@ SELECT
         WHEN current_wait_days <= 14 THEN 'GREEN'
         WHEN current_wait_days <= 21 THEN 'AMBER'
         ELSE 'RED'
-    END AS clinic_rag
-FROM base;
+    END AS clinic_rag,
+
+    CASE
+        WHEN first_clinic_date > CURRENT_DATE
+            THEN 'Future Booked'
+        WHEN first_clinic_date IS NOT NULL
+            THEN 'Historic'
+        WHEN referral_source IN ('SRH', 'IOW')
+            THEN 'External Provider'
+        ELSE 'Waiting'
+    END AS patient_group,
+
+    
+    CASE
+        WHEN COALESCE(TRIM(no_opa), '') = ''
+        THEN 1
+        ELSE 0
+    END AS include_in_operational_reporting_flag,
+
+
+
+   CASE
+        WHEN wait_days_for_chart < 7 THEN '0-1 Weeks'
+        WHEN wait_days_for_chart < 14 THEN '1-2 Weeks'
+        WHEN wait_days_for_chart < 21 THEN '2-3 Weeks'
+        WHEN wait_days_for_chart < 28 THEN '3-4 Weeks'
+        WHEN wait_days_for_chart < 35 THEN '4-5 Weeks'
+        WHEN wait_days_for_chart < 42 THEN '5-6 Weeks'
+        WHEN wait_days_for_chart < 49 THEN '6-7 Weeks'
+        WHEN wait_days_for_chart < 56 THEN '7-8 Weeks'
+        ELSE '8+ Weeks'
+    END AS wait_week_bucket,
+
+    
+    CASE
+        WHEN wait_days_for_chart < 7 THEN 1
+        WHEN wait_days_for_chart < 14 THEN 2
+        WHEN wait_days_for_chart < 21 THEN 3
+        WHEN wait_days_for_chart < 28 THEN 4
+        WHEN wait_days_for_chart < 35 THEN 5
+        WHEN wait_days_for_chart < 42 THEN 6
+        WHEN wait_days_for_chart < 49 THEN 7
+        WHEN wait_days_for_chart < 56 THEN 8
+        ELSE 9
+    END AS wait_week_bucket_sort
+
+
+
+FROM enriched;

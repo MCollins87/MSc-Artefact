@@ -70,6 +70,7 @@ run_sql_inline("""
                """)
 
 # STEP 3: Oncology Pathway
+run_sql("../SQL/intermediate/int_oncology_referrals.sql")
 run_sql("../SQL/intermediate/int_oncology_clinic_events.sql")
 run_sql("../SQL/facts/fact_oncology_pathway.sql")
 run_sql("../SQL/intermediate/int_oncology_events.sql")

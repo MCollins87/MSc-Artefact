@@ -196,8 +196,20 @@ def upsert_data(df):
         ON CONFLICT (source_id)
         DO UPDATE SET
             nhs_number = EXCLUDED.nhs_number,
+            r_number = EXCLUDED.r_number,
+            patient_name = EXCLUDED.patient_name,
+            speciality_referred = EXCLUDED.speciality_referred,
+            oncologist = EXCLUDED.oncologist,
+            referral_source = EXCLUDED.referral_source,
+            date_referred = EXCLUDED.date_referred,
+            date_received = EXCLUDED.date_received,
+            date_triaged = EXCLUDED.date_triaged,
             clinic_date = EXCLUDED.clinic_date,
-            modified = EXCLUDED.modified;
+            delay_reason = EXCLUDED.delay_reason,
+            created = EXCLUDED.created,
+            modified = EXCLUDED.modified,
+            clinic_type = EXCLUDED.clinic_type,
+            no_opa = EXCLUDED.no_opa;
     """
 
     execute_values(cursor, query, records)
