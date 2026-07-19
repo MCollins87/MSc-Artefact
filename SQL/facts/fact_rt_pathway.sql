@@ -395,6 +395,10 @@ SELECT
         ELSE 'Within Target'
     END AS operational_risk_group,
 
+    DATE_TRUNC('week', rt_referral_date)::DATE AS rt_week_commencing,
+    DATE_TRUNC('week', ct_date)::DATE AS ct_week_commencing,
+    DATE_TRUNC('week', first_completed_treat_date)::DATE AS treat_week_commencing,
+
 
 
     CURRENT_TIMESTAMP AS load_timestamp

@@ -23,6 +23,9 @@ SELECT
     ct_date,
     first_completed_treat_date AS treatment_date,
     ecad_referral_date,
+    rt_week_commencing,
+    ct_week_commencing,
+    treat_week_commencing,
 
     -- Flags
     has_active_booking,

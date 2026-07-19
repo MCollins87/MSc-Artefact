@@ -2,24 +2,21 @@ DROP VIEW IF EXISTS warehouse.int_oncology_referrals;
 
 CREATE VIEW warehouse.int_oncology_referrals AS
 
-WITH dedupe AS (
     SELECT
-    s.*,
-    ROW_NUMBER() OVER (
-        PARTITION BY UPPER(TRIM(r_number))
-        ORDER BY
-            CASE
-                WHEN COALESCE(TRIM(no_opa), '') = ''
-                THEN 1
-                ELSE 0
-            END DESC,
-            clinic_date DESC NULLS LAST,
-            date_triaged DESC NULLS LAST,
-            source_id DESC
-    ) AS rn
-    FROM staging.stg_oncology_intake s
-)
+    MAX(source_id) AS source_id,
+    r_number,
+    MAX(nhs_number) AS nhs_number,
+    MAX(patient_name) AS patient_name,
+    MAX(speciality_referred) AS speciality_referred,
+    MAX(oncologist) AS oncologist,
+    MAX(referral_source) AS referral_source,
+    MIN(date_referred) AS date_referred,
+    MIN(date_received) AS date_received,
+    MAX(date_triaged) AS date_triaged,
+    MAX(clinic_date) AS clinic_date,
+    MAX(clinic_type) AS clinic_type,
+    MAX(NULLIF(TRIM(no_opa),'')) AS no_opa,
+    STRING_AGG(DISTINCT delay_reason, ';') AS delay_reason
 
-SELECT *
-FROM dedupe
-WHERE rn = 1;
+    FROM staging.stg_oncology_intake
+    GROUP BY r_number;
