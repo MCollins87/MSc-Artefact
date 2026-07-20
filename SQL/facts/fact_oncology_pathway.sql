@@ -10,11 +10,12 @@ WITH base AS (
         s.speciality_referred,
         s.no_opa,
         s.referral_source,
+        s.clinic_type,
         clinic.ref_to_local_code AS clinic_speciality,
 
         -- Core Dates
         s.date_referred AS referral_date,
-        s.date_recieved,
+        s.date_received,
         clinic.first_booking_date,
         clinic.first_clinic_date,
         clinic.appointment_attendance_status,
@@ -24,8 +25,8 @@ WITH base AS (
         DATE_TRUNC('week', s.date_referred)::DATE AS referral_week,
 
         -- Core intervals
-        (COALESCE(s.date_recieved::DATE, s.date_referred) - s.date_referred::DATE) AS days_referral_to_recieved,
-        (clinic.first_booking_date::DATE - COALESCE(s.date_recieved::DATE, s.date_referred::DATE)) AS days_recieved_to_triage,
+        (COALESCE(s.date_received::DATE, s.date_referred) - s.date_referred::DATE) AS days_referral_to_received,
+        GREATEST(clinic.first_booking_date::DATE - COALESCE(s.date_received::DATE, s.date_referred::DATE), 0) AS days_received_to_triage,
         (clinic.first_clinic_date::DATE - clinic.first_booking_date::DATE) AS days_triage_to_clinic,
 
         CASE
@@ -80,10 +81,10 @@ enriched AS (
             WHEN days_triage_to_clinic > 84
             THEN 1
             ELSE 0
-        END AS deferred_follow_up_flag,
+        END AS deferred_followup_flag,
 
         CASE 
-            WHEN days_triage_to_clinic > 84
+            WHEN days_triage_to_clinic < 84
                 AND COALESCE(TRIM(no_opa), '') = ''
             THEN 1
             ELSE 0
@@ -124,6 +125,31 @@ classified AS (
 
     FROM enriched
 
+),
+
+reporting AS (
+    SELECT
+        *,
+    -- Current wait for charts
+
+        CASE
+            WHEN active_referral_flag = 1
+                THEN current_wait_days
+            WHEN future_operational_clinic_flag = 1
+                THEN days_to_clinic
+            WHEN completed_operational_clinic_flag = 1
+                THEN days_to_clinic
+        END AS operational_wait_days,
+
+    -- Future booked KPI
+
+        CASE 
+            WHEN future_operational_clinic_flag = 1
+            THEN days_to_clinic
+        END AS future_booked_wait_days
+
+    FROM classified
+
 )
 
 SELECT
@@ -159,33 +185,14 @@ SELECT
         ELSE 99
     END AS patient_group_sort,
 
-    -- Current wait for charts
-
-    CASE
-        WHEN active_referral_flag = 1
-            THEN current_wait_days
-        WHEN future_operational_clinic_flag = 1
-            THEN days_to_clinic
-        WHEN completed_operational_clinic_flag = 1
-            THEN days_to_clinic
-    END AS operational_wait_days,
-
-    -- Future booked KPI
-
-    CASE 
-        WHEN future_operational_clinic_flag = 1
-        THEN days_to_clinic
-    END AS future_booked_wait_days,
-
     -- RAG
 
     CASE 
         WHEN current_wait_days <= 14 THEN 'GREEN'
         WHEN current_wait_days <= 21 THEN 'AMBER'
         ELSE 'RED'
-    END AS clinic_rag
+    END AS clinic_rag,
 
-    
     -- Time windows
 
     CASE
@@ -233,4 +240,4 @@ SELECT
         ELSE 9
     END AS wait_week_bucket_sort
 
-FROM classified;
+FROM reporting;
