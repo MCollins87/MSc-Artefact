@@ -52,6 +52,7 @@ try:
     run_python("etl/load_treat.py")
     run_python("etl/load_machine_appointments.py")
     run_python("etl/load_oncology.py")
+    run_python("etl/load_clinic_routine.py")
 except Exception as e:
     logging.info(f"Pipeline failes {e}")
     raise
